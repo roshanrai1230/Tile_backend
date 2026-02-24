@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const multer = require('multer');
 const path = require('path');
@@ -27,59 +28,82 @@ router.get('/all', async (req, res) => {
   }
 });
 
-// B. Add Product (Multiple Images Fix)
-router.post('/add', upload.fields([{ name: 'images', maxCount: 10 }]), async (req, res) => {
-  try {
-    const { name, size, category, priceSqFt, priceBox, description } = req.body;
-    const baseUrl = "http://localhost:5000/uploads/";
-
-    let imagePaths = [];
-
-    // ✅ Yeh raha loop jo har file ko alag path dega
-    if (req.files && req.files['images']) {
-      req.files['images'].forEach((file) => {
-        const fullPath = baseUrl + file.filename;
-        imagePaths.push(fullPath); 
-      });
+// B. Add Product 
+router.post('/add', (req, res) => {
+  upload.fields([{ name: 'images', maxCount: 10 }])(req, res, async (err) => {
+    if (err) {
+      console.error("❌ Multer Error:", err);
+      return res.status(400).json({ message: "Multer Error", error: err.message });
     }
 
-    const newProduct = new Product({
-      name,
-      size,
-      category,
-      priceSqFt,
-      priceBox,
-      description,
-      images: imagePaths, // Isme ab pakka alag-alag URLs honge
-      images: imagePaths
-    });
+    try {
+      const { name, category, priceSqFt, priceBox, description, sizes, colors } = req.body;
+      const baseUrl = "http://localhost:5000/uploads/";
 
-    await newProduct.save();
-    res.status(201).json(newProduct);
-  } catch (err) {
-    console.error("❌ Error during save:", err);
-    res.status(400).json({ message: "Galti ho gayi bhai!" });
-  }
+      let imagePaths = [];
+      if (req.files && req.files['images']) {
+        req.files['images'].forEach((file) => {
+          imagePaths.push(baseUrl + file.filename);
+        });
+      }
+
+      const parseArray = (input) => {
+        if (!input) return [];
+        if (Array.isArray(input)) return input;
+        try {
+          const parsed = JSON.parse(input);
+          return Array.isArray(parsed) ? parsed : [input];
+        } catch (e) {
+          return String(input).split(',').map(s => s.trim()).filter(s => s !== "");
+        }
+      };
+
+      const newProduct = new Product({
+        name,
+        category,
+        description,
+        priceSqFt: priceSqFt ? Number(priceSqFt) : undefined,
+        priceBox: priceBox ? Number(priceBox) : undefined,
+        sizes: parseArray(sizes),
+        colors: parseArray(colors),
+        images: imagePaths
+      });
+
+      console.log("💾 Saving product to database...");
+      await newProduct.save();
+      console.log("✅ Product saved successfully!");
+      res.status(201).json(newProduct);
+    } catch (saveErr) {
+      console.error("❌ Error during save:", saveErr);
+      let errorDetails = {};
+      if (saveErr.name === 'ValidationError') {
+        Object.keys(saveErr.errors).forEach(key => {
+          errorDetails[key] = saveErr.errors[key].message;
+        });
+      }
+      res.status(400).json({
+        message: "Failed to save product",
+        error: saveErr.message,
+        details: errorDetails
+      });
+    }
+  });
 });
 
 // C. Get Single Product
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Mongoose Object ID validation
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({ message: "Bhai, product ki ID ka format sahi nahi hai." });
+      return res.status(400).json({ message: "Invalid ID format" });
     }
-
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({ message: "Sorry, ye product database mein nahi mila." });
+      return res.status(404).json({ message: "Product not found" });
     }
-    
     res.json(product);
   } catch (err) {
-    res.status(500).json({ message: "Server mein kuch garbar hai." });
+    res.status(500).json({ message: "Server error" });
   }
 });
 

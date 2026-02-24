@@ -24,18 +24,23 @@ const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
   name: String,
-  size: String,
+  sizes: [String], // Array for multiple sizes
+  colors: [String], // Array for multiple colors
   priceSqFt: Number,
   priceBox: Number,
-  category: { 
-    type: String, 
+  category: {
+    type: String,
     required: true // 🔥 Sirf category mandatory hai
   },
-  
+
   images: [String],
   video: String,
   description: String,
-  createdAt: { type: Date, default: Date.now }
+}, {
+  bufferCommands: true, // Enable buffering for this model
+  bufferTimeoutMS: 30000,
+  timestamps: true
 });
+
 
 module.exports = mongoose.model('Product', productSchema);
