@@ -1,14 +1,20 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const app = express();
 
 // 1. Middlewares
-app.use(cors());
+// Setup CORS to allow credentials (cookies) from the frontend
+app.use(cors({
+  origin: 'http://localhost:5173', // Vite default port
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use('/uploads', express.static('uploads'));
 
 // Manual Request Logger
@@ -27,6 +33,16 @@ app.get('/health-check', (req, res) => {
     time: new Date().toISOString()
   });
 });
+// 2. Routes (Moved outside DB connection to register synchronously)
+const productRoutes = require('./routes/productRoutes');
+const orderRoutes = require('./routes/orderRoutes');
+const authRoutes = require('./routes/authRoutes');
+const userAuthRoutes = require('./routes/userAuthRoutes');
+
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userAuthRoutes);
 
 const start = async () => {
   try {
@@ -36,13 +52,6 @@ const start = async () => {
 
     await mongoose.connect(process.env.MONGO_URI);
     console.log("✅ MongoDB Connected Successfully");
-
-    // 2. Routes (Imported after connection)
-    const productRoutes = require('./routes/productRoutes');
-    const orderRoutes = require('./routes/orderRoutes');
-    app.use('/api/products', productRoutes);
-    app.use('/api/orders', orderRoutes);
-
 
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => console.log(`🚀 Server started on port ${PORT}`));

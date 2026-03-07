@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Product = require('../models/Product');
+const { protectAdmin } = require('../middleware/authMiddleware');
 const multer = require('multer');
 const path = require('path');
 
@@ -18,7 +19,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// A. Get All Products
+// A. Get All Products (Public Route)
 router.get('/all', async (req, res) => {
   try {
     const products = await Product.find().sort({ createdAt: -1 });
@@ -28,8 +29,8 @@ router.get('/all', async (req, res) => {
   }
 });
 
-// B. Add Product 
-router.post('/add', (req, res) => {
+// B. Add Product (Protected Route - Admin Only)
+router.post('/add', protectAdmin, (req, res) => {
   upload.fields([{ name: 'images', maxCount: 10 }])(req, res, async (err) => {
     if (err) {
       console.error("❌ Multer Error:", err);
