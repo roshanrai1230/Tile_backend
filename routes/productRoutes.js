@@ -39,7 +39,7 @@ router.post('/add', protectAdmin, (req, res) => {
 
     try {
       const { name, category, priceSqFt, priceBox, description, sizes, colors } = req.body;
-      const baseUrl = "http://localhost:5000/uploads/";
+      const baseUrl = "/uploads/";
 
       let imagePaths = [];
       if (req.files && req.files['images']) {
