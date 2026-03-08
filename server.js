@@ -46,17 +46,31 @@ app.use('/api/users', userAuthRoutes);
 
 const start = async () => {
   try {
+    const mongoUri = process.env.MONGO_URI;
     console.log("⏳ Connecting to MongoDB...");
+    
+    if (!mongoUri) {
+      console.error("❌ ERROR: MONGO_URI environment variable is missing!");
+      process.exit(1);
+    }
+
+    console.log("🔗 Connection string found (length):", mongoUri.length);
+
     // Force buffering at global level
     mongoose.set('bufferCommands', true);
 
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(mongoUri);
     console.log("✅ MongoDB Connected Successfully");
 
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`🚀 Server started on port ${PORT}`));
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server started on port ${PORT}`);
+      console.log(`📡 Accepting connections from all interfaces`);
+    });
   } catch (err) {
-    console.error("❌ MongoDB Connection Error:", err.message);
+    console.error("❌ MongoDB Connection Error Details:");
+    console.error("Name:", err.name);
+    console.error("Message:", err.message);
     process.exit(1);
   }
 };
