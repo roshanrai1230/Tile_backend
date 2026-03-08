@@ -46,7 +46,7 @@ app.use('/api/users', userAuthRoutes);
 
 const start = async () => {
   try {
-    const mongoUri = process.env.MONGO_URI;
+    let mongoUri = process.env.MONGO_URI ? process.env.MONGO_URI.trim() : null;
     console.log("⏳ Connecting to MongoDB...");
     
     if (!mongoUri) {
@@ -55,11 +55,16 @@ const start = async () => {
     }
 
     console.log("🔗 Connection string found (length):", mongoUri.length);
+    // Masked URI for safety
+    const maskedUri = mongoUri.replace(/\/\/(.*):(.*)@/, "//***:***@");
+    console.log("🌍 Attempting to connect to:", maskedUri);
 
     // Force buffering at global level
     mongoose.set('bufferCommands', true);
 
-    await mongoose.connect(mongoUri);
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds instead of 30
+    });
     console.log("✅ MongoDB Connected Successfully");
 
     const PORT = process.env.PORT || 5000;
@@ -71,6 +76,9 @@ const start = async () => {
     console.error("❌ MongoDB Connection Error Details:");
     console.error("Name:", err.name);
     console.error("Message:", err.message);
+    if (err.reason) {
+      console.error("Reason:", JSON.stringify(err.reason, null, 2));
+    }
     process.exit(1);
   }
 };
