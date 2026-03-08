@@ -9,7 +9,7 @@ const app = express();
 // 1. Middlewares
 // Setup CORS to allow credentials (cookies) from the frontend
 app.use(cors({
-  origin: 'http://localhost:5173', // Vite default port
+  origin: true, // Allow all origins for easier deployment
   credentials: true
 }));
 app.use(express.json());
