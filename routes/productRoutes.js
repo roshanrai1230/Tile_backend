@@ -108,4 +108,74 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// D. Delete Product (Protected Route - Admin Only)
+router.delete('/:id', protectAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
+    const product = await Product.findByIdAndDelete(id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    res.json({ message: "Product deleted successfully", product });
+  } catch (err) {
+    console.error("❌ Delete error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// E. Update Product (Protected Route - Admin Only)
+router.put('/:id', protectAdmin, (req, res) => {
+  upload.fields([{ name: 'images', maxCount: 10 }])(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ message: "Multer Error", error: err.message });
+    }
+
+    try {
+      const { id } = req.params;
+      if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({ message: "Invalid ID format" });
+      }
+
+      const { name, category, priceSqFt, priceBox, description, sizes, colors } = req.body;
+
+      const parseArray = (input) => {
+        if (!input) return undefined;
+        if (Array.isArray(input)) return input;
+        try {
+          const parsed = JSON.parse(input);
+          return Array.isArray(parsed) ? parsed : [input];
+        } catch (e) {
+          return String(input).split(',').map(s => s.trim()).filter(s => s !== "");
+        }
+      };
+
+      const updateData = {};
+      if (name) updateData.name = name;
+      if (category) updateData.category = category;
+      if (description) updateData.description = description;
+      if (priceSqFt) updateData.priceSqFt = Number(priceSqFt);
+      if (priceBox) updateData.priceBox = Number(priceBox);
+      if (sizes) updateData.sizes = parseArray(sizes);
+      if (colors) updateData.colors = parseArray(colors);
+
+      if (req.files && req.files['images'] && req.files['images'].length > 0) {
+        updateData.images = req.files['images'].map(file => `/uploads/${file.filename}`);
+      }
+
+      const product = await Product.findByIdAndUpdate(id, updateData, { new: true });
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      res.json({ message: "Product updated successfully", product });
+    } catch (saveErr) {
+      console.error("❌ Update error:", saveErr);
+      res.status(500).json({ message: "Failed to update product", error: saveErr.message });
+    }
+  });
+});
+
 module.exports = router;
